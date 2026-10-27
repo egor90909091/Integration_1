@@ -1,0 +1,68 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq_trading
+    ports:
+      - "5673:5672"   # AMQP
+      - "15673:15672" # management UI (guest/guest)
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  trading:
+    build: .
+    container_name: trading
+    command: python producer.py
+    environment:
+      RABBIT_HOST: rabbitmq
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  accounting:
+    build: .
+    container_name: accounting
+    command: python consumer.py
+    environment:
+      RABBIT_HOST: rabbitmq
+      DEPARTMENT: Бухгалтерия
+      QUEUE: accounting_queue
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  oil_depot:
+    build: .
+    container_name: oil_depot
+    command: python consumer.py
+    environment:
+      RABBIT_HOST: rabbitmq
+      DEPARTMENT: Нефтебаза
+      QUEUE: oil_depot_queue
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  analytics:
+    build: .
+    container_name: analytics
+    command: python consumer.py
+    environment:
+      RABBIT_HOST: rabbitmq
+      DEPARTMENT: Аналитический отдел
+      QUEUE: analytics_queue
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  dead_letters:
+    build: .
+    container_name: price_dead_letters
+    command: python dead_letters.py
+    environment:
+      RABBIT_HOST: rabbitmq
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
