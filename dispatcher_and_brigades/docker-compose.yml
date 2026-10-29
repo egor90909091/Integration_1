@@ -1,0 +1,68 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq_brigades
+    ports:
+      - "5672:5672"   # AMQP
+      - "15672:15672" # management UI (guest/guest)
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+
+  dispatcher:
+    build: .
+    container_name: dispatcher
+    command: python producer.py
+    environment:
+      RABBIT_HOST: rabbitmq
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+
+  brigade_1:
+    build: .
+    container_name: brigade_1
+    command: python consumer.py
+    environment:
+      RABBIT_HOST: rabbitmq
+      BRIGADE: Бригада 1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  brigade_2:
+    build: .
+    container_name: brigade_2
+    command: python consumer.py
+    environment:
+      RABBIT_HOST: rabbitmq
+      BRIGADE: Бригада 2
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  brigade_3:
+    build: .
+    container_name: brigade_3
+    command: python consumer.py
+    environment:
+      RABBIT_HOST: rabbitmq
+      BRIGADE: Бригада 3
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+
+  dead_letters:
+    build: .
+    container_name: repair_dead_letters
+    command: python dead_letters.py
+    environment:
+      RABBIT_HOST: rabbitmq
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
