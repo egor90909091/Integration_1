@@ -1,0 +1,81 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq_estimate
+    ports:
+      - "5674:5672"   # AMQP
+      - "15674:15672" # management UI (guest/guest)
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  initiator:
+    build: .
+    container_name: initiator
+    command: python initiator.py
+    environment:
+      RABBIT_HOST: rabbitmq
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+  splitter:
+    build: .
+    container_name: splitter
+    command: python splitter.py
+    environment:
+      RABBIT_HOST: rabbitmq
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+  router:
+    build: .
+    container_name: router
+    command: python router.py
+    environment:
+      RABBIT_HOST: rabbitmq
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+  drilling:
+    build: .
+    container_name: drilling_service
+    command: python worker.py
+    environment:
+      RABBIT_HOST: rabbitmq
+      WORK_TYPE: drilling
+      SERVICE: Сервис бурения
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+  electric:
+    build: .
+    container_name: electric_service
+    command: python worker.py
+    environment:
+      RABBIT_HOST: rabbitmq
+      WORK_TYPE: electric
+      SERVICE: Сервис электрики
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+  logistics:
+    build: .
+    container_name: logistics_service
+    command: python worker.py
+    environment:
+      RABBIT_HOST: rabbitmq
+      WORK_TYPE: logistics
+      SERVICE: Сервис логистики
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+  aggregator:
+    build: .
+    container_name: aggregator
+    command: python aggregator.py
+    environment:
+      RABBIT_HOST: rabbitmq
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
